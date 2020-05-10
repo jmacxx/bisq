@@ -1,7 +1,7 @@
-genesis_tx="e90c357baa66af5b62ed8b2ac8956b1391cde08bf74347cf24f58d323ad9cd76"
+genesis_tx="f3d5486d33fb9a1a0c36f937a85ca88454a3a23435006e4af632265fa6fb5457"
 genesis_height=102
-rpcuser="bisq"
-rpcpassword="bisq"
+rpcuser="bisqdao"
+rpcpassword="bsq"
 blocknotifyport=5120
 rpcport=18443
-dao="false"
+dao="true"
