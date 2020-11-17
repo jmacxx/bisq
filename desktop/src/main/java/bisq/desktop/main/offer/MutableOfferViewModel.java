@@ -76,9 +76,11 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -180,6 +182,8 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
     final IntegerProperty marketPriceAvailableProperty = new SimpleIntegerProperty(-1);
     private ChangeListener<Number> currenciesUpdateListener;
     protected boolean syncMinAmountWithAmount = true;
+    protected DoubleProperty feeMultiplier = new SimpleDoubleProperty(1.5);
+    private ChangeListener<Number> feeMultiplierListener;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor, lifecycle
@@ -476,6 +480,10 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
             }
         };
 
+        feeMultiplierListener = (ov, oldValue, newValue) -> {
+            dataModel.feeMultiplier = newValue.doubleValue();
+            applyMakerFee();
+        };
 
         isWalletFundedListener = (ov, oldValue, newValue) -> updateButtonDisableState();
        /* feeFromFundingTxListener = (ov, oldValue, newValue) -> {
@@ -566,6 +574,8 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
         dataModel.getIsBtcWalletFunded().addListener(isWalletFundedListener);
 
         priceFeedService.updateCounterProperty().addListener(currenciesUpdateListener);
+
+        feeMultiplier.addListener(feeMultiplierListener);
     }
 
     private void removeListeners() {
@@ -591,6 +601,7 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
             offer.getErrorMessageProperty().removeListener(errorMessageListener);
 
         priceFeedService.updateCounterProperty().removeListener(currenciesUpdateListener);
+        feeMultiplier.removeListener(feeMultiplierListener);
     }
 
 

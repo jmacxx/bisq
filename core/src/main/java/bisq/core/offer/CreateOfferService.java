@@ -105,6 +105,7 @@ public class CreateOfferService {
                                    Coin minAmount,
                                    Price price,
                                    Coin txFee,
+                                   Coin tradeFee,
                                    boolean useMarketBasedPrice,
                                    double marketPriceMargin,
                                    double buyerSecurityDepositAsDouble,
@@ -165,7 +166,7 @@ public class CreateOfferService {
         double sellerSecurityDeposit = getSellerSecurityDepositAsDouble(buyerSecurityDepositAsDouble);
         Coin txFeeFromFeeService = getEstimatedFeeAndTxSize(amount, direction, buyerSecurityDepositAsDouble, sellerSecurityDeposit).first;
         Coin txFeeToUse = txFee.isPositive() ? txFee : txFeeFromFeeService;
-        Coin makerFeeAsCoin = offerUtil.getMakerFee(amount);
+        Coin makerFeeAsCoin = tradeFee.isLessThan(offerUtil.getMakerFee(amount)) ? offerUtil.getMakerFee(amount) : tradeFee;
         boolean isCurrencyForMakerFeeBtc = offerUtil.isCurrencyForMakerFeeBtc(amount);
         Coin buyerSecurityDepositAsCoin = getBuyerSecurityDeposit(amount, buyerSecurityDepositAsDouble);
         Coin sellerSecurityDepositAsCoin = getSellerSecurityDeposit(amount, sellerSecurityDeposit);

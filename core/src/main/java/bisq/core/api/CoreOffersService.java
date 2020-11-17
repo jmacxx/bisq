@@ -113,14 +113,15 @@ class CoreOffersService {
         Coin amount = Coin.valueOf(amountAsLong);
         Coin minAmount = Coin.valueOf(minAmountAsLong);
         PaymentAccount paymentAccount = user.getPaymentAccount(paymentAccountId);
-        Coin useDefaultTxFee = Coin.ZERO;
+        Coin useDefaultFee = Coin.ZERO;
         Offer offer = createOfferService.createAndGetOffer(offerId,
                 direction,
                 upperCaseCurrencyCode,
                 amount,
                 minAmount,
                 price,
-                useDefaultTxFee,
+                useDefaultFee,
+                useDefaultFee,
                 useMarketBasedPrice,
                 exactMultiply(marketPriceMargin, 0.01),
                 buyerSecurityDeposit,
@@ -146,14 +147,15 @@ class CoreOffersService {
                     Coin minAmount,
                     double buyerSecurityDeposit,
                     PaymentAccount paymentAccount) {
-        Coin useDefaultTxFee = Coin.ZERO;
+        Coin useDefaultFee = Coin.ZERO;
         return createOfferService.createAndGetOffer(offerId,
                 direction,
                 currencyCode.toUpperCase(),
                 amount,
                 minAmount,
                 price,
-                useDefaultTxFee,
+                useDefaultFee,
+                useDefaultFee,
                 useMarketBasedPrice,
                 exactMultiply(marketPriceMargin, 0.01),
                 buyerSecurityDeposit,

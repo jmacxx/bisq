@@ -78,6 +78,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
@@ -177,6 +178,8 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
             buyerSecurityDepositInfoInputTextField;
     private AutoTooltipSlideToggleButton tradeFeeInBtcToggle, tradeFeeInBsqToggle;
     private Text xIcon, fakeXIcon;
+    private Slider slider;
+    private ChangeListener<Number> sliderListener;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor, lifecycle
@@ -258,6 +261,10 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
             boolean currencyForMakerFeeBtc = model.getDataModel().isCurrencyForMakerFeeBtc();
             tradeFeeInBtcToggle.setSelected(currencyForMakerFeeBtc);
             tradeFeeInBsqToggle.setSelected(!currencyForMakerFeeBtc);
+            tradeFeeInBtcToggle.setVisible(true);
+            tradeFeeInBtcToggle.setManaged(true);
+            tradeFeeInBsqToggle.setVisible(true);
+            tradeFeeInBsqToggle.setManaged(true);
 
             if (!DevEnv.isDaoActivated()) {
                 tradeFeeInBtcToggle.setVisible(false);
@@ -741,6 +748,9 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         };
 
         marketPriceAvailableListener = (observable, oldValue, newValue) -> updatePriceToggle();
+        sliderListener = (observable, oldValue, newValue) -> {
+            model.feeMultiplier.setValue(newValue.doubleValue());
+        };
 
         getShowWalletFundedNotificationListener = (observable, oldValue, newValue) -> {
             if (newValue) {
@@ -885,6 +895,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     private void addListeners() {
         model.tradeCurrencyCode.addListener(tradeCurrencyCodeListener);
         model.marketPriceAvailableProperty.addListener(marketPriceAvailableListener);
+        slider.valueProperty().addListener(sliderListener);
         model.marketPriceMargin.addListener(marketPriceMarginListener);
         model.volume.addListener(volumeListener);
         model.getDataModel().missingCoin.addListener(missingCoinListener);
@@ -920,6 +931,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     private void removeListeners() {
         model.tradeCurrencyCode.removeListener(tradeCurrencyCodeListener);
         model.marketPriceAvailableProperty.removeListener(marketPriceAvailableListener);
+        slider.valueProperty().removeListener(sliderListener);
         model.marketPriceMargin.removeListener(marketPriceMarginListener);
         model.volume.removeListener(volumeListener);
         model.getDataModel().missingCoin.removeListener(missingCoinListener);
@@ -1438,6 +1450,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         vBox.setMaxWidth(300);
         vBox.setAlignment(DevEnv.isDaoActivated() ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
         vBox.getChildren().addAll(tradeFeeInBtcLabel, tradeFeeInBsqLabel);
+        vBox.setPrefWidth(170);
 
         tradeFeeInBtcToggle = new AutoTooltipSlideToggleButton();
         tradeFeeInBtcToggle.setText("BTC");
@@ -1452,12 +1465,22 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         VBox tradeFeeToggleButtonBox = new VBox();
         tradeFeeToggleButtonBox.getChildren().addAll(tradeFeeInBtcToggle, tradeFeeInBsqToggle);
 
+        slider = new Slider(1.0, 5.0, 2.0);
+        slider.setMajorTickUnit(0.5);
+        slider.setMinorTickCount(2);
+        slider.setShowTickMarks(true);
+        slider.setSnapToTicks(false);
+        Label sliderLabel = new Label("Consider increasing the trade fee to support Bisq");
+        VBox sliderBox = new VBox();
+        sliderBox.getChildren().addAll(slider, sliderLabel);
+
         HBox hBox = new HBox();
-        hBox.getChildren().addAll(vBox, tradeFeeToggleButtonBox);
+        hBox.getChildren().addAll(vBox, tradeFeeToggleButtonBox, sliderBox);
         hBox.setMinHeight(47);
         hBox.setMaxHeight(hBox.getMinHeight());
         HBox.setHgrow(vBox, Priority.ALWAYS);
         HBox.setHgrow(tradeFeeToggleButtonBox, Priority.NEVER);
+        hBox.setSpacing(20);
 
         final Tuple2<Label, VBox> tradeInputBox = getTradeInputBox(hBox, Res.get("createOffer.tradeFee.descriptionBSQEnabled"));
 

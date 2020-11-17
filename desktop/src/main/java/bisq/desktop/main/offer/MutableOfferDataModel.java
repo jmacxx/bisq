@@ -127,6 +127,7 @@ public abstract class MutableOfferDataModel extends OfferDataModel implements Bs
     protected PaymentAccount paymentAccount;
     boolean isTabSelected;
     protected double marketPriceMargin = 0;
+    protected double feeMultiplier = 2.0;
     private Coin txFeeFromFeeService = Coin.ZERO;
     private boolean marketPriceAvailable;
     private int feeTxSize = TxFeeEstimationService.TYPICAL_TX_WITH_1_INPUT_SIZE;
@@ -294,6 +295,7 @@ public abstract class MutableOfferDataModel extends OfferDataModel implements Bs
                 minAmount.get(),
                 price.get(),
                 txFeeFromFeeService,
+                getMakerFee(),
                 useMarketBasedPrice.get(),
                 marketPriceMargin,
                 buyerSecurityDeposit.get(),
@@ -713,20 +715,29 @@ public abstract class MutableOfferDataModel extends OfferDataModel implements Bs
         this.marketPriceAvailable = marketPriceAvailable;
     }
 
+    private Coin applyFeeMultipler(Coin fee) {
+        double amountAsDouble = fee != null ? (double) fee.value : 0;
+        return Coin.valueOf(Math.round(this.feeMultiplier * amountAsDouble));
+    }
+
     public Coin getMakerFee(boolean isCurrencyForMakerFeeBtc) {
-        return CoinUtil.getMakerFee(isCurrencyForMakerFeeBtc, amount.get());
+        Coin makerFee = CoinUtil.getMakerFee(isCurrencyForMakerFeeBtc, amount.get());
+        return applyFeeMultipler(makerFee);
     }
 
     public Coin getMakerFee() {
-        return offerUtil.getMakerFee(amount.get());
+        Coin makerFee = offerUtil.getMakerFee(amount.get());
+        return applyFeeMultipler(makerFee);
     }
 
     public Coin getMakerFeeInBtc() {
-        return CoinUtil.getMakerFee(true, amount.get());
+        Coin makerFee = CoinUtil.getMakerFee(true, amount.get());
+        return applyFeeMultipler(makerFee);
     }
 
     public Coin getMakerFeeInBsq() {
-        return CoinUtil.getMakerFee(false, amount.get());
+        Coin makerFee = CoinUtil.getMakerFee(false, amount.get());
+        return applyFeeMultipler(makerFee);
     }
 
     public boolean isCurrencyForMakerFeeBtc() {
