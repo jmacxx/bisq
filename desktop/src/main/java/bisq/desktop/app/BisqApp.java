@@ -27,6 +27,7 @@ import bisq.desktop.main.overlays.windows.BsqEmptyWalletWindow;
 import bisq.desktop.main.overlays.windows.BtcEmptyWalletWindow;
 import bisq.desktop.main.overlays.windows.FilterWindow;
 import bisq.desktop.main.overlays.windows.ManualPayoutTxWindow;
+import bisq.desktop.main.overlays.windows.MempoolValidationTool;
 import bisq.desktop.main.overlays.windows.SendAlertMessageWindow;
 import bisq.desktop.main.overlays.windows.ShowWalletDataWindow;
 import bisq.desktop.util.CssTheme;
@@ -347,6 +348,8 @@ public class BisqApp extends Application implements UncaughtExceptionHandler {
                 } else if (DevEnv.isDevMode()) {
                     if (Utilities.isAltOrCtrlPressed(KeyCode.Z, keyEvent))
                         showDebugWindow(scene, injector);
+                    if (Utilities.isAltOrCtrlPressed(KeyCode.X, keyEvent))
+                        injector.getInstance(MempoolValidationTool.class).show();
                 }
             }
         });

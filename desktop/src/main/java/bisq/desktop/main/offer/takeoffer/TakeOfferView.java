@@ -141,7 +141,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
             volumeCurrencyLabel, priceDescriptionLabel, volumeDescriptionLabel,
             waitingForFundsLabel, offerAvailabilityLabel, priceAsPercentageDescription,
             tradeFeeDescriptionLabel, resultLabel, tradeFeeInBtcLabel, tradeFeeInBsqLabel, xLabel,
-            fakeXLabel;
+            fakeXLabel, mempoolStatusLabel;
     private InputTextField amountTextField;
     private TextField paymentMethodTextField, currencyTextField, priceTextField, priceAsPercentageTextField,
             volumeTextField, amountRangeTextField;
@@ -164,6 +164,8 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private boolean offerDetailsWindowDisplayed, clearXchangeWarningDisplayed, fasterPaymentsWarningDisplayed;
     private SimpleBooleanProperty errorPopupDisplayed;
     private ChangeListener<Boolean> amountFocusedListener, getShowWalletFundedNotificationListener;
+    private ChangeListener<Number> getMempoolStatusListener;
+
     private InfoInputTextField volumeInfoTextField;
     private AutoTooltipSlideToggleButton tradeFeeInBtcToggle, tradeFeeInBsqToggle;
     private ChangeListener<Boolean> tradeFeeInBtcToggleListener, tradeFeeInBsqToggleListener,
@@ -216,6 +218,15 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
                         .autoClose();
 
                 walletFundedNotification.show();
+            }
+        };
+
+        getMempoolStatusListener = (observable, oldValue, newValue) -> {
+            if (newValue.longValue() >= 0) {
+                mempoolStatusLabel.setVisible(true);
+                mempoolStatusLabel.setText(newValue.longValue() > 0 ?
+                        Res.get("shared.makerFeeTxId") + " ✔️" :
+                        Res.get("shared.makerFeeTxId") + " ⚠️️");
             }
         };
 
@@ -761,6 +772,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void addListeners() {
         amountTextField.focusedProperty().addListener(amountFocusedListener);
         model.dataModel.getShowWalletFundedNotification().addListener(getShowWalletFundedNotificationListener);
+        model.dataModel.getMempoolStatus().addListener(getMempoolStatusListener);
         model.isTradeFeeVisible.addListener(tradeFeeVisibleListener);
         tradeFeeInBtcToggle.selectedProperty().addListener(tradeFeeInBtcToggleListener);
         tradeFeeInBsqToggle.selectedProperty().addListener(tradeFeeInBsqToggleListener);
@@ -769,6 +781,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void removeListeners() {
         amountTextField.focusedProperty().removeListener(amountFocusedListener);
         model.dataModel.getShowWalletFundedNotification().removeListener(getShowWalletFundedNotificationListener);
+        model.dataModel.getMempoolStatus().removeListener(getMempoolStatusListener);
         model.isTradeFeeVisible.removeListener(tradeFeeVisibleListener);
         tradeFeeInBtcToggle.selectedProperty().removeListener(tradeFeeInBtcToggleListener);
         tradeFeeInBsqToggle.selectedProperty().removeListener(tradeFeeInBsqToggleListener);
@@ -887,7 +900,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
         nextButton = tuple.first;
         nextButton.setMaxWidth(200);
         nextButton.setDefaultButton(true);
-        nextButton.setOnAction(e -> showNextStepAfterAmountIsSet());
+        nextButton.setOnAction(e -> nextStepCheckMakerTx());
 
         cancelButton1 = tuple.second;
         cancelButton1.setMaxWidth(200);
@@ -896,6 +909,21 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
             model.dataModel.swapTradeToSavings();
             close(false);
         });
+    }
+
+    private void nextStepCheckMakerTx() {
+        // the tx validation check has had plenty of time to complete, but if for some reason it has not returned
+        // we continue anyway since the check is not crucial.
+        // note, it would be great if there was a real tri-state boolean we could use here, instead of -1, 0, and 1
+        if (model.dataModel.mempoolStatus.get() == 0) {
+            new Popup().warning(Res.get("popup.warning.makerTxInvalid") + model.dataModel.getMempoolStatusText())
+                    .onClose(() -> {
+                        cancelButton1.fire();
+                    })
+                    .show();
+        } else {
+            showNextStepAfterAmountIsSet();
+        }
     }
 
     private void showNextStepAfterAmountIsSet() {
@@ -938,8 +966,9 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void addOfferAvailabilityLabel() {
         offerAvailabilityBusyAnimation = new BusyAnimation(false);
         offerAvailabilityLabel = new AutoTooltipLabel(Res.get("takeOffer.fundsBox.isOfferAvailable"));
-
-        buttonBox.getChildren().addAll(offerAvailabilityBusyAnimation, offerAvailabilityLabel);
+        mempoolStatusLabel = new AutoTooltipLabel("");
+        mempoolStatusLabel.setVisible(false);
+        buttonBox.getChildren().addAll(offerAvailabilityBusyAnimation, offerAvailabilityLabel, mempoolStatusLabel);
     }
 
     private void addFundingGroup() {

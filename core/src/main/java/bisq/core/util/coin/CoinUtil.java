@@ -106,6 +106,24 @@ public class CoinUtil {
         }
     }
 
+    public static Coin getMakerFeeHistorical(boolean isCurrencyForMakerFeeBtc, @Nullable Coin amount, long chainHeight) {
+        if (amount != null) {
+            Coin feePerBtc = getFeePerBtc(FeeService.getMakerFeePerBtcHistorical(isCurrencyForMakerFeeBtc, chainHeight), amount);
+            return maxCoin(feePerBtc, FeeService.getMinMakerFeeHistorical(isCurrencyForMakerFeeBtc, chainHeight));
+        } else {
+            return null;
+        }
+    }
+
+    public static Coin getTakerFeeHistorical(boolean isCurrencyForTakerFeeBtc, @Nullable Coin amount, long chainHeight) {
+        if (amount != null) {
+            Coin feePerBtc = getFeePerBtc(FeeService.getTakerFeePerBtcHistorical(isCurrencyForTakerFeeBtc, chainHeight), amount);
+            return maxCoin(feePerBtc, FeeService.getMinTakerFeeHistorical(isCurrencyForTakerFeeBtc, chainHeight));
+        } else {
+            return null;
+        }
+    }
+
     /**
      * Calculate the possibly adjusted amount for {@code amount}, taking into account the
      * {@code price} and {@code maxTradeLimit} and {@code factor}.
