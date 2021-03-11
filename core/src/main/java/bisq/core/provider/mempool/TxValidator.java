@@ -218,7 +218,7 @@ public class TxValidator {
         Coin expectedFee = isMaker ?
                 getMakerFeeHistorical(true, tradeAmount, blockHeight) :
                 getTakerFeeHistorical(true, tradeAmount, blockHeight);
-        Double leniencyCalc = feeValue / (double)expectedFee.getValue();
+        Double leniencyCalc = feeValue / (double) expectedFee.getValue();
         String description = "Expected BTC fee: " + expectedFee.toString() + " sats , actual fee paid: " + Coin.valueOf(feeValue).toString() + " sats";
         if (expectedFee.getValue() == feeValue) {
             log.debug("The fee matched what we expected");

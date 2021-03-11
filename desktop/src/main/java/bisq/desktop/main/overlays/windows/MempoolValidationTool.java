@@ -295,7 +295,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
             }
             // trigger the next check
             UserThread.runAfter(() -> {
-                inProgressCount.set(inProgressCount.get()-1);
+                inProgressCount.set(inProgressCount.get() - 1);
                 if (offerList.size() > 0) {
                     checkOffer(resultsArea, offersToProcessLbl, offerList);
                 }
@@ -340,7 +340,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
             }
             // trigger the next check
             UserThread.runAfter(() -> {
-                inProgressCount.set(inProgressCount.get()-1);
+                inProgressCount.set(inProgressCount.get() - 1);
                 if (tradeList.size() > 0) {
                     checkTrade(resultsArea, tradesToProcessLbl, tradeList);
                 }
@@ -353,8 +353,8 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
         String asciiSpinner = "⠁⠂⠄⡀⢀⠠⠐⠈";
         asciiSpinnerIdx -= 1;
         if (asciiSpinnerIdx < 0)
-            asciiSpinnerIdx = asciiSpinner.length()-1;
-        spinnerLabel.setText(asciiSpinner.substring(asciiSpinnerIdx,asciiSpinnerIdx+1));
+            asciiSpinnerIdx = asciiSpinner.length() - 1;
+        spinnerLabel.setText(asciiSpinner.substring(asciiSpinnerIdx, asciiSpinnerIdx + 1));
         // trigger the next update
         if (inProgressCount.get() > 0) {
             UserThread.runAfter(() -> {

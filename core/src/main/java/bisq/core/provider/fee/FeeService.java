@@ -67,24 +67,24 @@ public class FeeService {
     private static DaoStateService daoStateService;
     private static PeriodService periodService;
 
-    private static Coin getFeeFromParamAsCoin(Param parm, long chainHeight) {
-        return daoStateService != null && periodService != null ? daoStateService.getParamValueAsCoin(parm, (chainHeight > 0 ? (int) chainHeight : periodService.getChainHeight())) : Coin.ZERO;
+    private static Coin getFeeFromParamAsCoin(Param parm) {
+        return daoStateService != null && periodService != null ? daoStateService.getParamValueAsCoin(parm, periodService.getChainHeight()) : Coin.ZERO;
     }
 
     public static Coin getMakerFeePerBtc(boolean currencyForFeeIsBtc) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BTC, 0) : getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BSQ, 0);
+        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BTC) : getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BSQ);
     }
 
     public static Coin getMinMakerFee(boolean currencyForFeeIsBtc) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BTC, 0) : getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BSQ, 0);
+        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BTC) : getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BSQ);
     }
 
     public static Coin getTakerFeePerBtc(boolean currencyForFeeIsBtc) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BTC, 0) : getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BSQ, 0);
+        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BTC) : getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BSQ);
     }
 
     public static Coin getMinTakerFee(boolean currencyForFeeIsBtc) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BTC, 0) : getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BSQ, 0);
+        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BTC) : getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BSQ);
     }
 
 

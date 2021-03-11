@@ -73,11 +73,11 @@ public class MempoolService {
     }
 
     public void validateOfferMakerTx(OfferPayload offerPayload, Consumer<TxValidator> resultHandler) {
-        validateOfferMakerTx2(new TxValidator(daoStateService, offerPayload.getOfferFeePaymentTxId(), Coin.valueOf(offerPayload.getAmount()), offerPayload.isCurrencyForMakerFeeBtc(), offerPayload.getBlockHeightAtOfferCreation())
-                , resultHandler);
+        validateOfferMakerTx(new TxValidator(daoStateService, offerPayload.getOfferFeePaymentTxId(), Coin.valueOf(offerPayload.getAmount()),
+                        offerPayload.isCurrencyForMakerFeeBtc(), offerPayload.getBlockHeightAtOfferCreation()), resultHandler);
     }
 
-    public void validateOfferMakerTx2(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
+    public void validateOfferMakerTx(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
         if (!canRequestBeMade()) {
             return;
         }
@@ -86,8 +86,8 @@ public class MempoolService {
     }
 
     public void validateOfferTakerTx(Trade trade, Consumer<TxValidator> resultHandler) {
-        validateOfferTakerTx(new TxValidator(daoStateService, trade.getTakerFeeTxId(), trade.getTradeAmount(), trade.isCurrencyForTakerFeeBtc(), null)
-                , resultHandler);
+        validateOfferTakerTx(new TxValidator(daoStateService, trade.getTakerFeeTxId(), trade.getTradeAmount(),
+                        trade.isCurrencyForTakerFeeBtc(), null), resultHandler);
     }
 
     public void validateOfferTakerTx(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
@@ -233,8 +233,6 @@ public class MempoolService {
     }
 
     private boolean canRequestBeMade() {
-        return true; // JMC HACK
-        /*
         if (filterManager.getFilter() != null && filterManager.getFilter().isDisableMempoolValidation()) {
             log.info("MempoolService bypassed by filter setting disableMempoolValidation=true");
             return false;
@@ -247,6 +245,6 @@ public class MempoolService {
             log.info("MempoolService only supports mainnet");
             return false;
         }
-        return true;*/
+        return true;
     }
 }
