@@ -87,21 +87,6 @@ public class FeeService {
         return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BTC, 0) : getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BSQ, 0);
     }
 
-    public static Coin getMakerFeePerBtcHistorical(boolean currencyForFeeIsBtc, long chainHeight) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BTC, chainHeight) : getFeeFromParamAsCoin(Param.DEFAULT_MAKER_FEE_BSQ, chainHeight);
-    }
-
-    public static Coin getMinMakerFeeHistorical(boolean currencyForFeeIsBtc, long chainHeight) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BTC, chainHeight) : getFeeFromParamAsCoin(Param.MIN_MAKER_FEE_BSQ, chainHeight);
-    }
-
-    public static Coin getTakerFeePerBtcHistorical(boolean currencyForFeeIsBtc, long chainHeight) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BTC, chainHeight) : getFeeFromParamAsCoin(Param.DEFAULT_TAKER_FEE_BSQ, chainHeight);
-    }
-
-    public static Coin getMinTakerFeeHistorical(boolean currencyForFeeIsBtc, long chainHeight) {
-        return currencyForFeeIsBtc ? getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BTC, chainHeight) : getFeeFromParamAsCoin(Param.MIN_TAKER_FEE_BSQ, chainHeight);
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Class fields

@@ -394,7 +394,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
         long amount = Long.parseLong(y[2]);
         boolean isCurrencyForMakerFeeBtc = Long.parseLong(y[4]) > 0;
         log.warn("Start testing maker/taker/deposit of offer {}", id);
-        mempoolService.getMakerOutspends(new TxValidator(makerTxId, Coin.valueOf(amount), isCurrencyForMakerFeeBtc, null), (result -> {
+        mempoolService.getMakerOutspends(new TxValidator(null, makerTxId, Coin.valueOf(amount), isCurrencyForMakerFeeBtc, null), (result -> {
             String depositTxId = result.extractDepositTxIdFromMakerOutspends();
             UserThread.runAfter(() -> {
                 if (depositTxId == null) {  // no deposit tx means the offer is still open
@@ -407,7 +407,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     }
 
     private void processDepositTx(Label label, String makerTxId, String depositTxId, Coin amount, Map<String, String> offers) {
-        mempoolService.validateDepositTx(new TxValidator(depositTxId, amount, null, null), (result -> {
+        mempoolService.validateDepositTx(new TxValidator(null, depositTxId, amount, null, null), (result -> {
             String takerTxId = result.extractTakerTxIdFromDepositTx(makerTxId);
             UserThread.runAfter(() -> {
                 if (takerTxId == null) {  // no taker tx means the offer was canceled
@@ -420,7 +420,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     }
 
     private void processTakerTx(Label label, String takerTxId, Coin amount, Map<String, String> offers) {
-        mempoolService.validateOfferTakerTx(new TxValidator(takerTxId, amount, null, null), (result -> {
+        mempoolService.validateOfferTakerTx(new TxValidator(null, takerTxId, amount, null, null), (result -> {
             if (result.isFail()) {
                 log.warn("{} : {}", takerTxId, result.toString());
             } else {

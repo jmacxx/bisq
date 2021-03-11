@@ -17,7 +17,8 @@
 
 package bisq.core.provider.mempool;
 
-import bisq.core.util.coin.CoinUtil;
+import bisq.core.dao.governance.param.Param;
+import bisq.core.dao.state.DaoStateService;
 
 import bisq.common.util.Tuple2;
 
@@ -38,6 +39,8 @@ import lombok.Getter;
 
 import org.jetbrains.annotations.Nullable;
 
+import static bisq.core.util.coin.CoinUtil.maxCoin;
+
 @Slf4j
 @Getter
 public class TxValidator {
@@ -47,28 +50,31 @@ public class TxValidator {
     @Nullable
     private Boolean isFeeCurrencyBtc = null;
     @Nullable
-    private Long blockHeight = null;
+    private Long blockHeight;
     @Setter
     private String jsonTxt;
     @Setter
-    private boolean mockFeeLookups = false; // used by TxValidatorTest
+    private DaoStateService daoStateService;
 
 
-    public TxValidator(String txId, Coin amount, @Nullable Boolean isFeeCurrencyBtc, @Nullable Long blockHeight) {
+    public TxValidator(DaoStateService daoStateService, String txId, Coin amount, @Nullable Boolean isFeeCurrencyBtc, @Nullable Long blockHeight) {
+        this.daoStateService = daoStateService;
         this.txId = txId;
         this.amount = amount;
         this.isFeeCurrencyBtc = isFeeCurrencyBtc;
         this.blockHeight = blockHeight;
-        errorList = new ArrayList<>();
+        this.errorList = new ArrayList<>();
         this.jsonTxt = "";
     }
 
-    public TxValidator(String txId, long blockHeight) {
+    public TxValidator(DaoStateService daoStateService, String txId, long blockHeight) {
+        this.daoStateService = daoStateService;
         this.txId = txId;
         this.blockHeight = blockHeight;
-        errorList = new ArrayList<>();
+        this.errorList = new ArrayList<>();
         this.jsonTxt = "";
     }
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // API
@@ -220,8 +226,8 @@ public class TxValidator {
         } else if (expectedFee.getValue() < feeValue) {
             log.warn("The fee was more than what we expected: " + description);
             return true;
-        } else if (leniencyCalc > 0.85) {
-            log.warn("Leniency rule: the fee was low, but above 85% of what was expected {} {}", leniencyCalc, description);
+        } else if (leniencyCalc > 0.95) {
+            log.warn("Leniency rule: the fee was low, but above 95% of what was expected {} {}", leniencyCalc, description);
             return true;
         } else {
             String error = "UNDERPAID. " + description;
@@ -264,8 +270,8 @@ public class TxValidator {
         } else if (expectedFee.getValue() < feeValue) {
             log.warn("The fee was more than what we expected. " + description);
             return true;
-        } else if (leniencyCalc > 0.85) {
-            log.warn("Leniency rule: the fee was low, but above 85% of what was expected {} {}", leniencyCalc, description);
+        } else if (leniencyCalc > 0.95) {
+            log.warn("Leniency rule: the fee was low, but above 95% of what was expected {} {}", leniencyCalc, description);
             return true;
         } else {
             errorList.add(description);
@@ -341,18 +347,54 @@ public class TxValidator {
         return 0;  // 0 indicates unconfirmed
     }
 
-    private Coin getMakerFeeHistorical(boolean isFeeCurrencyBtc, Coin tradeAmount, long blockHeight) {
-        if (mockFeeLookups) {
-            return isFeeCurrencyBtc ? Coin.valueOf(5000) : Coin.valueOf(1);
+    private Coin getMakerFeeHistorical(boolean isFeeCurrencyBtc, Coin amount, long blockHeight) {
+        double feePerBtcAsDouble;
+        Coin minMakerFee;
+        if (isFeeCurrencyBtc) {
+            feePerBtcAsDouble = (double) getMakerFeeRateBtc(blockHeight).value;
+            minMakerFee = Coin.valueOf(5000L); // MIN_MAKER_FEE_BTC "0.00005"
+        } else {
+            feePerBtcAsDouble = (double) getMakerFeeRateBsq(blockHeight).value;
+            minMakerFee = Coin.valueOf(3L); // MIN_MAKER_FEE_BSQ "0.03"
         }
-        return CoinUtil.getMakerFeeHistorical(true, tradeAmount, blockHeight);
+        double amountAsDouble = amount != null ? (double) amount.value : 0;
+        double btcAsDouble = (double) Coin.COIN.value;
+        double fact = amountAsDouble / btcAsDouble;
+        Coin feePerBtc = Coin.valueOf(Math.round(feePerBtcAsDouble * fact));
+        return maxCoin(feePerBtc, minMakerFee);
     }
 
-    private Coin getTakerFeeHistorical(boolean isFeeCurrencyBtc, Coin tradeAmount, long blockHeight) {
-        if (mockFeeLookups) {
-            return isFeeCurrencyBtc ? Coin.valueOf(7000) : Coin.valueOf(2);
+    private Coin getTakerFeeHistorical(boolean isFeeCurrencyBtc, Coin amount, long blockHeight) {
+        double feePerBtcAsDouble;
+        Coin minTakerFee;
+        if (isFeeCurrencyBtc) {
+            feePerBtcAsDouble = (double) getTakerFeeRateBtc(blockHeight).value;
+            minTakerFee = Coin.valueOf(5000L); // MIN_TAKER_FEE_BTC "0.00005"
+        } else {
+            feePerBtcAsDouble = (double) getTakerFeeRateBsq(blockHeight).value;
+            minTakerFee = Coin.valueOf(3L); // MIN_TAKER_FEE_BSQ "0.03"
         }
-        return CoinUtil.getTakerFeeHistorical(true, tradeAmount, blockHeight);
+        double amountAsDouble = amount != null ? (double) amount.value : 0;
+        double btcAsDouble = (double) Coin.COIN.value;
+        double fact = amountAsDouble / btcAsDouble;
+        Coin feePerBtc = Coin.valueOf(Math.round(feePerBtcAsDouble * fact));
+        return maxCoin(feePerBtc, minTakerFee);
+    }
+
+    private Coin getMakerFeeRateBsq(long blockHeight) {
+        return daoStateService.getParamValueAsCoin(Param.DEFAULT_MAKER_FEE_BSQ, (int) blockHeight);
+    }
+
+    private Coin getTakerFeeRateBsq(long blockHeight) {
+        return daoStateService.getParamValueAsCoin(Param.DEFAULT_TAKER_FEE_BSQ, (int) blockHeight);
+    }
+
+    private Coin getMakerFeeRateBtc(long blockHeight) {
+        return daoStateService.getParamValueAsCoin(Param.DEFAULT_MAKER_FEE_BTC, (int) blockHeight);
+    }
+
+    private Coin getTakerFeeRateBtc(long blockHeight) {
+        return daoStateService.getParamValueAsCoin(Param.DEFAULT_TAKER_FEE_BTC, (int) blockHeight);
     }
 
     public TxValidator endResult(String title, boolean status) {

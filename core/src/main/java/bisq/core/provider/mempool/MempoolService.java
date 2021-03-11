@@ -18,6 +18,7 @@
 package bisq.core.provider.mempool;
 
 import bisq.core.dao.DaoFacade;
+import bisq.core.dao.state.DaoStateService;
 import bisq.core.filter.FilterManager;
 import bisq.core.offer.OfferPayload;
 import bisq.core.provider.MempoolHttpClient;
@@ -49,9 +50,10 @@ import javax.annotation.Nullable;
 public class MempoolService {
     private final MempoolHttpClient mempoolHttpClient;
     private final Config config;
-    private static Preferences preferences;
+    private final Preferences preferences;
     private final FilterManager filterManager;
     private final DaoFacade daoFacade;
+    private final DaoStateService daoStateService;
     private List<String> btcFeeReceivers;
 
     @Inject
@@ -59,17 +61,19 @@ public class MempoolService {
                           Config config,
                           Preferences preferences,
                           FilterManager filterManager,
-                          DaoFacade daoFacade) {
+                          DaoFacade daoFacade,
+                          DaoStateService daoStateService) {
         this.mempoolHttpClient = mempoolHttpClient;
         this.config = config;
         this.preferences = preferences;
         this.filterManager = filterManager;
         this.daoFacade = daoFacade;
+        this.daoStateService = daoStateService;
         this.btcFeeReceivers = getAllBtcFeeReceivers();
     }
 
     public void validateOfferMakerTx(OfferPayload offerPayload, Consumer<TxValidator> resultHandler) {
-        validateOfferMakerTx2(new TxValidator(offerPayload.getOfferFeePaymentTxId(), Coin.valueOf(offerPayload.getAmount()), offerPayload.isCurrencyForMakerFeeBtc(), offerPayload.getBlockHeightAtOfferCreation())
+        validateOfferMakerTx2(new TxValidator(daoStateService, offerPayload.getOfferFeePaymentTxId(), Coin.valueOf(offerPayload.getAmount()), offerPayload.isCurrencyForMakerFeeBtc(), offerPayload.getBlockHeightAtOfferCreation())
                 , resultHandler);
     }
 
@@ -82,7 +86,7 @@ public class MempoolService {
     }
 
     public void validateOfferTakerTx(Trade trade, Consumer<TxValidator> resultHandler) {
-        validateOfferTakerTx(new TxValidator(trade.getTakerFeeTxId(), trade.getTradeAmount(), trade.isCurrencyForTakerFeeBtc(), null)
+        validateOfferTakerTx(new TxValidator(daoStateService, trade.getTakerFeeTxId(), trade.getTradeAmount(), trade.isCurrencyForTakerFeeBtc(), null)
                 , resultHandler);
     }
 
@@ -100,7 +104,7 @@ public class MempoolService {
         }
         MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
         SettableFuture<String> future = SettableFuture.create();
-        TxValidator txValidator = new TxValidator(txId, daoFacade.getChainHeight());
+        TxValidator txValidator = new TxValidator(daoStateService, txId, daoFacade.getChainHeight());
         Futures.addCallback(future, callbackForTxRequest(mempoolRequest, txValidator, resultHandler), MoreExecutors.directExecutor());
         mempoolRequest.getTxStatus(future, txId, null);
     }
