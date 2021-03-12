@@ -141,7 +141,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
             volumeCurrencyLabel, priceDescriptionLabel, volumeDescriptionLabel,
             waitingForFundsLabel, offerAvailabilityLabel, priceAsPercentageDescription,
             tradeFeeDescriptionLabel, resultLabel, tradeFeeInBtcLabel, tradeFeeInBsqLabel, xLabel,
-            fakeXLabel, mempoolStatusLabel;
+            fakeXLabel;
     private InputTextField amountTextField;
     private TextField paymentMethodTextField, currencyTextField, priceTextField, priceAsPercentageTextField,
             volumeTextField, amountRangeTextField;
@@ -164,7 +164,6 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private boolean offerDetailsWindowDisplayed, clearXchangeWarningDisplayed, fasterPaymentsWarningDisplayed;
     private SimpleBooleanProperty errorPopupDisplayed;
     private ChangeListener<Boolean> amountFocusedListener, getShowWalletFundedNotificationListener;
-    private ChangeListener<Number> getMempoolStatusListener;
 
     private InfoInputTextField volumeInfoTextField;
     private AutoTooltipSlideToggleButton tradeFeeInBtcToggle, tradeFeeInBsqToggle;
@@ -218,15 +217,6 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
                         .autoClose();
 
                 walletFundedNotification.show();
-            }
-        };
-
-        getMempoolStatusListener = (observable, oldValue, newValue) -> {
-            if (newValue.longValue() >= 0) {
-                mempoolStatusLabel.setVisible(true);
-                mempoolStatusLabel.setText(newValue.longValue() > 0 ?
-                        Res.get("shared.makerFeeTxId") + " ✔️" :
-                        Res.get("shared.makerFeeTxId") + " ⚠️️");
             }
         };
 
@@ -772,7 +762,6 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void addListeners() {
         amountTextField.focusedProperty().addListener(amountFocusedListener);
         model.dataModel.getShowWalletFundedNotification().addListener(getShowWalletFundedNotificationListener);
-        model.dataModel.getMempoolStatus().addListener(getMempoolStatusListener);
         model.isTradeFeeVisible.addListener(tradeFeeVisibleListener);
         tradeFeeInBtcToggle.selectedProperty().addListener(tradeFeeInBtcToggleListener);
         tradeFeeInBsqToggle.selectedProperty().addListener(tradeFeeInBsqToggleListener);
@@ -781,7 +770,6 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void removeListeners() {
         amountTextField.focusedProperty().removeListener(amountFocusedListener);
         model.dataModel.getShowWalletFundedNotification().removeListener(getShowWalletFundedNotificationListener);
-        model.dataModel.getMempoolStatus().removeListener(getMempoolStatusListener);
         model.isTradeFeeVisible.removeListener(tradeFeeVisibleListener);
         tradeFeeInBtcToggle.selectedProperty().removeListener(tradeFeeInBtcToggleListener);
         tradeFeeInBsqToggle.selectedProperty().removeListener(tradeFeeInBsqToggleListener);
@@ -966,9 +954,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
     private void addOfferAvailabilityLabel() {
         offerAvailabilityBusyAnimation = new BusyAnimation(false);
         offerAvailabilityLabel = new AutoTooltipLabel(Res.get("takeOffer.fundsBox.isOfferAvailable"));
-        mempoolStatusLabel = new AutoTooltipLabel("");
-        mempoolStatusLabel.setVisible(false);
-        buttonBox.getChildren().addAll(offerAvailabilityBusyAnimation, offerAvailabilityLabel, mempoolStatusLabel);
+        buttonBox.getChildren().addAll(offerAvailabilityBusyAnimation, offerAvailabilityLabel);
     }
 
     private void addFundingGroup() {

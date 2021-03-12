@@ -44,33 +44,33 @@ import static bisq.core.util.coin.CoinUtil.maxCoin;
 @Slf4j
 @Getter
 public class TxValidator {
+    private final double feeTolerance = 0.95;     // we expect fees to be at least 95% of target
+    private final long blockTolerance = 599999L;  // allow really old offers with weird fee addresses
     private List<String> errorList;
     private String txId;
     private Coin amount;
     @Nullable
     private Boolean isFeeCurrencyBtc = null;
     @Nullable
-    private Long blockHeight;
+    private Long chainHeight;
     @Setter
     private String jsonTxt;
-    @Setter
     private DaoStateService daoStateService;
 
 
-    public TxValidator(DaoStateService daoStateService, String txId, Coin amount, @Nullable Boolean isFeeCurrencyBtc, @Nullable Long blockHeight) {
+    public TxValidator(DaoStateService daoStateService, String txId, Coin amount, @Nullable Boolean isFeeCurrencyBtc) {
         this.daoStateService = daoStateService;
         this.txId = txId;
         this.amount = amount;
         this.isFeeCurrencyBtc = isFeeCurrencyBtc;
-        this.blockHeight = blockHeight;
         this.errorList = new ArrayList<>();
         this.jsonTxt = "";
     }
 
-    public TxValidator(DaoStateService daoStateService, String txId, long blockHeight) {
+    public TxValidator(DaoStateService daoStateService, String txId, long chainHeight) {
         this.daoStateService = daoStateService;
         this.txId = txId;
-        this.blockHeight = blockHeight;
+        this.chainHeight = chainHeight;
         this.errorList = new ArrayList<>();
         this.jsonTxt = "";
     }
@@ -85,13 +85,11 @@ public class TxValidator {
         boolean status = initialSanityChecks(txId, jsonTxt);
         try {
             if (status) {
-                if (blockHeight == null)
-                    blockHeight = getTxBlockHeight(jsonTxt);
                 if (isFeeCurrencyBtc) {
                     status &= checkFeeAddressBTC(jsonTxt, btcFeeReceivers);
-                    status &= checkFeeAmountBTC(jsonTxt, amount, true, blockHeight);
+                    status &= checkFeeAmountBTC(jsonTxt, amount, true, getTxBlockHeight(jsonTxt));
                 } else {
-                    status &= checkFeeAmountBSQ(jsonTxt, amount, true, blockHeight);
+                    status &= checkFeeAmountBSQ(jsonTxt, amount, true, getTxBlockHeight(jsonTxt));
                 }
             }
         } catch (JsonSyntaxException e) {
@@ -131,7 +129,7 @@ public class TxValidator {
         if (!initialSanityChecks(txId, jsonTxt)) {
             return -1;
         }
-        return getTxConfirms(jsonTxt, blockHeight.longValue());
+        return getTxConfirms(jsonTxt, chainHeight.longValue());
     }
 
     public String extractDepositTxIdFromMakerOutspends() {
@@ -186,7 +184,7 @@ public class TxValidator {
             log.debug("fee address: {}", jsonFeeAddress.getAsString());
             if (btcFeeReceivers.contains(jsonFeeAddress.getAsString())) {
                 return true;
-            } else if (getTxBlockHeight(jsonTxt) < 600000L) {
+            } else if (getTxBlockHeight(jsonTxt) < blockTolerance) {
                 log.warn("Leniency rule, unrecognised fee receiver but its a really old offer so let it pass, {}", jsonFeeAddress.getAsString());
                 return true;
             } else {
@@ -226,8 +224,8 @@ public class TxValidator {
         } else if (expectedFee.getValue() < feeValue) {
             log.warn("The fee was more than what we expected: " + description);
             return true;
-        } else if (leniencyCalc > 0.95) {
-            log.warn("Leniency rule: the fee was low, but above 95% of what was expected {} {}", leniencyCalc, description);
+        } else if (leniencyCalc > feeTolerance) {
+            log.warn("Leniency rule: the fee was low, but above {} of what was expected {} {}", feeTolerance, leniencyCalc, description);
             return true;
         } else {
             String error = "UNDERPAID. " + description;
@@ -270,8 +268,8 @@ public class TxValidator {
         } else if (expectedFee.getValue() < feeValue) {
             log.warn("The fee was more than what we expected. " + description);
             return true;
-        } else if (leniencyCalc > 0.95) {
-            log.warn("Leniency rule: the fee was low, but above 95% of what was expected {} {}", leniencyCalc, description);
+        } else if (leniencyCalc > feeTolerance) {
+            log.warn("Leniency rule: the fee was low, but above {} of what was expected {} {}", feeTolerance, leniencyCalc, description);
             return true;
         } else {
             errorList.add(description);

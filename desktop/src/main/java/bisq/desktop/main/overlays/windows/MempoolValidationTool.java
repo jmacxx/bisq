@@ -237,8 +237,8 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
         Button buttonStart = new AutoTooltipButton("Start checking trades");
         Button buttonStop = new AutoTooltipButton("Stop checking trades");
         buttonStart.setOnAction(e -> {
-            startSpecialTest(tradesToProcessLbl, resultsArea.getText());
-            //startTradeValidation(spinnerLabel, resultsArea, tradesToProcessLbl, txIdFilter2.getText());
+            //startSpecialTest(tradesToProcessLbl, resultsArea.getText());
+            startTradeValidation(spinnerLabel, resultsArea, tradesToProcessLbl, txIdFilter2.getText());
         });
         buttonStop.setOnAction(e -> {
             stopMempoolValidation(resultsArea);
@@ -285,23 +285,25 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     private void checkOffer(TextArea resultsArea, Label offersToProcessLbl, List<Offer> offerList) {
         if (inProgressCount.get() < 1)
             return;
-        Offer offer = offerList.get(0);
-        offerList.remove(0);
-        mempoolService.validateOfferMakerTx(offer.getOfferPayload(), (txValidator -> {
-            if (txValidator.isFail()) {
-                resultsArea.setText(offer.getShortId() + " : " + txValidator.errorSummary() + "\n" + resultsArea.getText());
-                log.warn(offer.toString());
-                log.warn(txValidator.toString());
-            }
-            // trigger the next check
-            UserThread.runAfter(() -> {
-                inProgressCount.set(inProgressCount.get() - 1);
-                if (offerList.size() > 0) {
-                    checkOffer(resultsArea, offersToProcessLbl, offerList);
+        if (mempoolService.canRequestBeMade()) {
+            Offer offer = offerList.get(0);
+            offerList.remove(0);
+            mempoolService.validateOfferMakerTx(offer.getOfferPayload(), (txValidator -> {
+                if (txValidator.isFail()) {
+                    resultsArea.setText(offer.getShortId() + " : " + txValidator.errorSummary() + "\n" + resultsArea.getText());
+                    log.warn(offer.toString());
+                    log.warn(txValidator.toString());
                 }
-            }, 2, SECONDS);
-            displayCheckStatus(offersToProcessLbl, offerList.size());
-        }));
+                inProgressCount.set(inProgressCount.get() - 1);
+                displayCheckStatus(offersToProcessLbl, offerList.size());
+            }));
+        }
+        // trigger the next check
+        UserThread.runAfter(() -> {
+            if (offerList.size() > 0) {
+                checkOffer(resultsArea, offersToProcessLbl, offerList);
+            }
+        }, 500, MILLISECONDS);
     }
 
     private void displayCheckStatus(Label offersToProcessLbl, int listSize) {
@@ -330,23 +332,25 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     private void checkTrade(TextArea resultsArea, Label tradesToProcessLbl, List<Trade> tradeList) {
         if (inProgressCount.get() < 1)
             return;
-        Trade trade = tradeList.get(0);
-        tradeList.remove(0);
-        mempoolService.validateOfferTakerTx(trade, (txValidator -> {
-            if (txValidator.isFail()) {
-                resultsArea.setText(trade.getShortId() + " : " + txValidator.errorSummary() + "\n" + resultsArea.getText());
-                log.warn(trade.toString());
-                log.warn(txValidator.toString());
-            }
-            // trigger the next check
-            UserThread.runAfter(() -> {
-                inProgressCount.set(inProgressCount.get() - 1);
-                if (tradeList.size() > 0) {
-                    checkTrade(resultsArea, tradesToProcessLbl, tradeList);
+        if (mempoolService.canRequestBeMade()) {
+            Trade trade = tradeList.get(0);
+            tradeList.remove(0);
+            mempoolService.validateOfferTakerTx(trade, (txValidator -> {
+                if (txValidator.isFail()) {
+                    resultsArea.setText(trade.getShortId() + " : " + txValidator.errorSummary() + "\n" + resultsArea.getText());
+                    log.warn(trade.toString());
+                    log.warn(txValidator.toString());
                 }
-            }, 2, SECONDS);
-            displayCheckStatus(tradesToProcessLbl, tradeList.size());
-        }));
+                displayCheckStatus(tradesToProcessLbl, tradeList.size());
+                inProgressCount.set(inProgressCount.get() - 1);
+            }));
+        }
+        // trigger the next check
+        UserThread.runAfter(() -> {
+            if (tradeList.size() > 0) {
+                checkTrade(resultsArea, tradesToProcessLbl, tradeList);
+            }
+        }, 100, MILLISECONDS);
     }
 
     private void updateSpinner(Label spinnerLabel) {
@@ -394,7 +398,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
         long amount = Long.parseLong(y[2]);
         boolean isCurrencyForMakerFeeBtc = Long.parseLong(y[4]) > 0;
         log.warn("Start testing maker/taker/deposit of offer {}", id);
-        mempoolService.getMakerOutspends(new TxValidator(null, makerTxId, Coin.valueOf(amount), isCurrencyForMakerFeeBtc, null), (result -> {
+        mempoolService.getMakerOutspends(new TxValidator(null, makerTxId, Coin.valueOf(amount), isCurrencyForMakerFeeBtc), (result -> {
             String depositTxId = result.extractDepositTxIdFromMakerOutspends();
             UserThread.runAfter(() -> {
                 if (depositTxId == null) {  // no deposit tx means the offer is still open
@@ -407,7 +411,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     }
 
     private void processDepositTx(Label label, String makerTxId, String depositTxId, Coin amount, Map<String, String> offers) {
-        mempoolService.validateDepositTx(new TxValidator(null, depositTxId, amount, null, null), (result -> {
+        mempoolService.validateDepositTx(new TxValidator(null, depositTxId, amount, null), (result -> {
             String takerTxId = result.extractTakerTxIdFromDepositTx(makerTxId);
             UserThread.runAfter(() -> {
                 if (takerTxId == null) {  // no taker tx means the offer was canceled
@@ -420,7 +424,7 @@ public class MempoolValidationTool extends Overlay<MempoolValidationTool> {
     }
 
     private void processTakerTx(Label label, String takerTxId, Coin amount, Map<String, String> offers) {
-        mempoolService.validateOfferTakerTx(new TxValidator(null, takerTxId, amount, null, null), (result -> {
+        mempoolService.validateOfferTakerTx(new TxValidator(null, takerTxId, amount, null), (result -> {
             if (result.isFail()) {
                 log.warn("{} : {}", takerTxId, result.toString());
             } else {

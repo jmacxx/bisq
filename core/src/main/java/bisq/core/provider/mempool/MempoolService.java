@@ -21,9 +21,10 @@ import bisq.core.dao.DaoFacade;
 import bisq.core.dao.state.DaoStateService;
 import bisq.core.filter.FilterManager;
 import bisq.core.offer.OfferPayload;
-import bisq.core.provider.MempoolHttpClient;
 import bisq.core.trade.Trade;
 import bisq.core.user.Preferences;
+
+import bisq.network.Socks5ProxyProvider;
 
 import org.bitcoinj.core.Coin;
 
@@ -42,28 +43,31 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
 
 @Slf4j
 public class MempoolService {
-    private final MempoolHttpClient mempoolHttpClient;
+    private final Socks5ProxyProvider socks5ProxyProvider;
     private final Config config;
     private final Preferences preferences;
     private final FilterManager filterManager;
     private final DaoFacade daoFacade;
     private final DaoStateService daoStateService;
     private List<String> btcFeeReceivers;
+    @Getter
+    private int outstandingRequests = 0;
 
     @Inject
-    public MempoolService(MempoolHttpClient mempoolHttpClient,
+    public MempoolService(Socks5ProxyProvider socks5ProxyProvider,
                           Config config,
                           Preferences preferences,
                           FilterManager filterManager,
                           DaoFacade daoFacade,
                           DaoStateService daoStateService) {
-        this.mempoolHttpClient = mempoolHttpClient;
+        this.socks5ProxyProvider = socks5ProxyProvider;
         this.config = config;
         this.preferences = preferences;
         this.filterManager = filterManager;
@@ -72,58 +76,65 @@ public class MempoolService {
         this.btcFeeReceivers = getAllBtcFeeReceivers();
     }
 
+    public boolean canRequestBeMade() {
+        return outstandingRequests < 5; // limit max simultaneous lookups
+    }
+
     public void validateOfferMakerTx(OfferPayload offerPayload, Consumer<TxValidator> resultHandler) {
         validateOfferMakerTx(new TxValidator(daoStateService, offerPayload.getOfferFeePaymentTxId(), Coin.valueOf(offerPayload.getAmount()),
-                        offerPayload.isCurrencyForMakerFeeBtc(), offerPayload.getBlockHeightAtOfferCreation()), resultHandler);
+                        offerPayload.isCurrencyForMakerFeeBtc()), resultHandler);
     }
 
     public void validateOfferMakerTx(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
-        if (!canRequestBeMade()) {
+        if (!isServiceSupported()) {
+            UserThread.runAfter(() -> resultHandler.accept(txValidator.endResult("mempool request not supported, bypassing", true)), 1);
             return;
         }
-        MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
+        MempoolRequest mempoolRequest = new MempoolRequest(preferences, socks5ProxyProvider);
         retryValidateOfferMakerTx(mempoolRequest, txValidator, resultHandler);
     }
 
     public void validateOfferTakerTx(Trade trade, Consumer<TxValidator> resultHandler) {
         validateOfferTakerTx(new TxValidator(daoStateService, trade.getTakerFeeTxId(), trade.getTradeAmount(),
-                        trade.isCurrencyForTakerFeeBtc(), null), resultHandler);
+                        trade.isCurrencyForTakerFeeBtc()), resultHandler);
     }
 
     public void validateOfferTakerTx(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
-        if (!canRequestBeMade()) {
+        if (!isServiceSupported()) {
+            UserThread.runAfter(() -> resultHandler.accept(txValidator.endResult("mempool request not supported, bypassing", true)), 1);
             return;
         }
-        MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
+        MempoolRequest mempoolRequest = new MempoolRequest(preferences, socks5ProxyProvider);
         retryValidateOfferTakerTx(mempoolRequest, txValidator, resultHandler);
     }
 
     public void checkTxIsConfirmed(String txId, Consumer<TxValidator> resultHandler) {
-        if (!canRequestBeMade()) {
+        TxValidator txValidator = new TxValidator(daoStateService, txId, daoFacade.getChainHeight());
+        if (!isServiceSupported()) {
+            UserThread.runAfter(() -> resultHandler.accept(txValidator.endResult("mempool request not supported, bypassing", true)), 1);
             return;
         }
-        MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
+        MempoolRequest mempoolRequest = new MempoolRequest(preferences, socks5ProxyProvider);
         SettableFuture<String> future = SettableFuture.create();
-        TxValidator txValidator = new TxValidator(daoStateService, txId, daoFacade.getChainHeight());
         Futures.addCallback(future, callbackForTxRequest(mempoolRequest, txValidator, resultHandler), MoreExecutors.directExecutor());
         mempoolRequest.getTxStatus(future, txId, null);
     }
 
     public void getMakerOutspends(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
-        if (!canRequestBeMade()) {
+        if (!isServiceSupported()) {
             return;
         }
-        MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
+        MempoolRequest mempoolRequest = new MempoolRequest(preferences, socks5ProxyProvider);
         SettableFuture<String> future = SettableFuture.create();
         Futures.addCallback(future, callbackForTxRequest(mempoolRequest, txValidator, resultHandler), MoreExecutors.directExecutor());
         mempoolRequest.getTxStatus(future, txValidator.getTxId(), "/outspends");
     }
 
     public void validateDepositTx(TxValidator txValidator, Consumer<TxValidator> resultHandler) {
-        if (!canRequestBeMade()) {
+        if (!isServiceSupported()) {
             return;
         }
-        MempoolRequest mempoolRequest = new MempoolRequest(preferences, mempoolHttpClient);
+        MempoolRequest mempoolRequest = new MempoolRequest(preferences, socks5ProxyProvider);
         SettableFuture<String> future = SettableFuture.create();
         Futures.addCallback(future, callbackForTxRequest(mempoolRequest, txValidator, resultHandler), MoreExecutors.directExecutor());
         mempoolRequest.getTxStatus(future, txValidator.getTxId(), null);
@@ -144,15 +155,18 @@ public class MempoolService {
     }
 
     private FutureCallback<String> callbackForMakerTxValidation(MempoolRequest theRequest, TxValidator txValidator, Consumer<TxValidator> resultHandler) {
+        outstandingRequests++;
         FutureCallback<String> myCallback = new FutureCallback<>() {
             @Override
             public void onSuccess(@Nullable String jsonTxt) {
+                outstandingRequests--;
                 UserThread.execute(() -> {
                     resultHandler.accept(txValidator.parseJsonValidateMakerFeeTx(jsonTxt, btcFeeReceivers));
                 });
             }
             @Override
             public void onFailure(Throwable throwable) {
+                outstandingRequests--;
                 log.warn("onFailure - {}", throwable.toString());
                 if (theRequest.switchToAnotherProvider()) {
                     retryValidateOfferMakerTx(theRequest, txValidator, resultHandler);
@@ -168,15 +182,18 @@ public class MempoolService {
     }
 
     private FutureCallback<String> callbackForTakerTxValidation(MempoolRequest theRequest, TxValidator txValidator, Consumer<TxValidator> resultHandler) {
+        outstandingRequests++;
         FutureCallback<String> myCallback = new FutureCallback<>() {
             @Override
             public void onSuccess(@Nullable String jsonTxt) {
+                outstandingRequests--;
                 UserThread.execute(() -> {
                     resultHandler.accept(txValidator.parseJsonValidateTakerFeeTx(jsonTxt, btcFeeReceivers));
                 });
             }
             @Override
             public void onFailure(Throwable throwable) {
+                outstandingRequests--;
                 log.warn("onFailure - {}", throwable.toString());
                 if (theRequest.switchToAnotherProvider()) {
                     retryValidateOfferTakerTx(theRequest, txValidator, resultHandler);
@@ -192,9 +209,11 @@ public class MempoolService {
     }
 
     private FutureCallback<String> callbackForTxRequest(MempoolRequest theRequest, TxValidator txValidator, Consumer<TxValidator> resultHandler) {
+        outstandingRequests++;
         FutureCallback<String> myCallback = new FutureCallback<>() {
             @Override
             public void onSuccess(@Nullable String jsonTxt) {
+                outstandingRequests--;
                 UserThread.execute(() -> {
                     txValidator.setJsonTxt(jsonTxt);
                     resultHandler.accept(txValidator);
@@ -202,6 +221,7 @@ public class MempoolService {
             }
             @Override
             public void onFailure(Throwable throwable) {
+                outstandingRequests--;
                 log.warn("onFailure - {}", throwable.toString());
                 UserThread.execute(() -> {
                     resultHandler.accept(txValidator.endResult("Tx not found", false));
@@ -232,7 +252,7 @@ public class MempoolService {
         return btcFeeReceivers;
     }
 
-    private boolean canRequestBeMade() {
+    private boolean isServiceSupported() {
         if (filterManager.getFilter() != null && filterManager.getFilter().isDisableMempoolValidation()) {
             log.info("MempoolService bypassed by filter setting disableMempoolValidation=true");
             return false;

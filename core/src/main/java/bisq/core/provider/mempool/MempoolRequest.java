@@ -20,6 +20,8 @@ package bisq.core.provider.mempool;
 import bisq.core.provider.MempoolHttpClient;
 import bisq.core.user.Preferences;
 
+import bisq.network.Socks5ProxyProvider;
+
 import bisq.common.util.Utilities;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -46,9 +48,9 @@ public class MempoolRequest {
     public List<String> txBroadcastServices = new ArrayList<>();
     private MempoolHttpClient mempoolHttpClient;
 
-    public MempoolRequest(Preferences preferences, MempoolHttpClient mempoolHttpClient) {
+    public MempoolRequest(Preferences preferences, Socks5ProxyProvider socks5ProxyProvider) {
         this.txBroadcastServices.addAll(preferences.getDefaultTxBroadcastServices());
-        this.mempoolHttpClient = mempoolHttpClient;
+        this.mempoolHttpClient = new MempoolHttpClient(socks5ProxyProvider);
     }
 
     public void getTxStatus(SettableFuture<String> mempoolServiceCallback, String txId, @Nullable String parameter) {
