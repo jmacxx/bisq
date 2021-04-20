@@ -137,8 +137,8 @@ public final class Navigation implements PersistedDataHost {
 
         currentPath = newPath;
         previousPath = currentPath;
-        listeners.forEach((e) -> e.onNavigationRequested(currentPath));
         listeners.forEach((e) -> e.onNavigationRequested(currentPath, data));
+        listeners.forEach((e) -> e.onNavigationRequested(currentPath));
         requestPersistence();
     }
 
