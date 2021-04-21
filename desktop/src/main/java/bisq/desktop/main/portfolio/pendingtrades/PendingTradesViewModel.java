@@ -195,8 +195,8 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
 
     public void setMessageStateProperty(MessageState messageState) {
         if (messageStateProperty.get() == MessageState.ACKNOWLEDGED) {
-            log.warn("We have already an ACKNOWLEDGED message received. " +
-                    "We would not expect any other message after that. Received messageState={}", messageState);
+            log.info("ACKNOWLEDGED state has been reached already, no further transition necessary. " +
+                    "Received messageState={}", messageState);
             return;
         }
 
