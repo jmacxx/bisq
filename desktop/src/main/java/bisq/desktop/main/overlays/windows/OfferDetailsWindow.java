@@ -421,8 +421,7 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
             if (GUIUtil.canCreateOrTakeOfferOrShowPopup(user, navigation)) {
                 button.setDisable(true);
                 cancelButton.setDisable(true);
-                // temporarily disabled due to high CPU usage (per issue #4649)
-                //  busyAnimation.play();
+                busyAnimation.play();
                 if (isPlaceOffer) {
                     spinnerInfoLabel.setText(Res.get("createOffer.fundsBox.placeOfferSpinnerInfo"));
                     placeOfferHandlerOptional.ifPresent(Runnable::run);
